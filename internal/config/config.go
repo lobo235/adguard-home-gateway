@@ -10,12 +10,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Config holds all runtime configuration loaded from environment variables.
 type Config struct {
 	// AdGuard Home upstream servers — one Client is created per entry.
-	AdGuardServers      []string
-	AdGuardScheme       string
-	AdGuardUser         string
-	AdGuardPassword     string
+	AdGuardServers       []string
+	AdGuardScheme        string
+	AdGuardUser          string
+	AdGuardPassword      string
 	AdGuardTLSSkipVerify bool
 
 	// Gateway settings
@@ -38,6 +39,8 @@ func (c *Config) SlogLevel() slog.Level {
 	}
 }
 
+// Load reads configuration from environment variables (and an optional .env file).
+// Returns an error if any required variable is missing or any value is invalid.
 func Load() (*Config, error) {
 	// Load .env if present — ignore error if file doesn't exist
 	_ = godotenv.Load()

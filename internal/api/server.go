@@ -27,6 +27,7 @@ type Server struct {
 	log     *slog.Logger
 }
 
+// NewServer creates a Server wired to the given AdGuard client, API key, version string, and logger.
 func NewServer(client adguardClient, apiKey, version string, log *slog.Logger) *Server {
 	return &Server{
 		adguard: client,
@@ -48,6 +49,7 @@ func (s *Server) Handler() http.Handler {
 	// Authenticated routes
 	mux.Handle("GET /rewrites", auth(http.HandlerFunc(s.listRewritesHandler())))
 	mux.Handle("POST /rewrites", auth(http.HandlerFunc(s.addRewriteHandler())))
+	mux.Handle("GET /rewrites/{domain}", auth(http.HandlerFunc(s.getRewriteHandler())))
 	mux.Handle("PUT /rewrites/{domain}", auth(http.HandlerFunc(s.updateRewriteHandler())))
 	mux.Handle("DELETE /rewrites/{domain}", auth(http.HandlerFunc(s.deleteRewriteHandler())))
 

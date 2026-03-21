@@ -23,9 +23,9 @@ const testVersion = "v1.0.0-test"
 
 // mockAdguard is a configurable mock that satisfies the adguardClient interface.
 type mockAdguard struct {
-	pingFunc         func() error
-	listRewritesFunc func() ([]adguard.Rewrite, error)
-	addRewriteFunc   func(domain, answer string) error
+	pingFunc          func() error
+	listRewritesFunc  func() ([]adguard.Rewrite, error)
+	addRewriteFunc    func(domain, answer string) error
 	deleteRewriteFunc func(domain, answer string) error
 }
 
@@ -162,7 +162,9 @@ func TestHealth_AdGuardDown(t *testing.T) {
 	resp := getJSON(t, srv, "/health", false)
 	assertStatus(t, resp, http.StatusServiceUnavailable)
 
-	var body struct{ Status string `json:"status"` }
+	var body struct {
+		Status string `json:"status"`
+	}
 	json.NewDecoder(resp.Body).Decode(&body)
 	if body.Status != "unavailable" {
 		t.Errorf("status = %q, want unavailable", body.Status)
@@ -324,14 +326,22 @@ func TestUpdateRewrite_OK(t *testing.T) {
 	}
 }
 
-func TestUpdateRewrite_NotFound(t *testing.T) {
+func TestUpdateRewrite_Upsert(t *testing.T) {
+	// PUT on a domain with no existing rewrite should create it (upsert).
+	var addedDomain, addedAnswer string
 	srv := newTestServer(t, &mockAdguard{
 		listRewritesFunc: func() ([]adguard.Rewrite, error) { return []adguard.Rewrite{}, nil },
+		addRewriteFunc: func(domain, answer string) error {
+			addedDomain, addedAnswer = domain, answer
+			return nil
+		},
 	})
 	defer srv.Close()
-	resp := putJSON(t, srv, "/rewrites/missing.example.com", map[string]string{"answer": "10.0.0.2"})
-	assertStatus(t, resp, http.StatusNotFound)
-	assertErrorCode(t, resp, "not_found")
+	resp := putJSON(t, srv, "/rewrites/new.example.com", map[string]string{"answer": "10.0.0.9"})
+	assertStatus(t, resp, http.StatusOK)
+	if addedDomain != "new.example.com" || addedAnswer != "10.0.0.9" {
+		t.Errorf("AddRewrite called with (%q, %q)", addedDomain, addedAnswer)
+	}
 }
 
 func TestUpdateRewrite_MissingAnswer(t *testing.T) {
@@ -359,6 +369,9 @@ func TestUpdateRewrite_ListUpstreamError(t *testing.T) {
 func TestDeleteRewrite_OK(t *testing.T) {
 	var gotDomain, gotAnswer string
 	srv := newTestServer(t, &mockAdguard{
+		listRewritesFunc: func() ([]adguard.Rewrite, error) {
+			return []adguard.Rewrite{{Domain: "svc.example.com", Answer: "10.0.0.1"}}, nil
+		},
 		deleteRewriteFunc: func(domain, answer string) error {
 			gotDomain, gotAnswer = domain, answer
 			return nil
@@ -366,7 +379,7 @@ func TestDeleteRewrite_OK(t *testing.T) {
 	})
 	defer srv.Close()
 
-	req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/rewrites/svc.example.com?answer=10.0.0.1", nil)
+	req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/rewrites/svc.example.com", nil)
 	req.Header.Set("Authorization", authHeader())
 	resp, _ := http.DefaultClient.Do(req)
 	assertStatus(t, resp, http.StatusNoContent)
@@ -375,26 +388,91 @@ func TestDeleteRewrite_OK(t *testing.T) {
 	}
 }
 
-func TestDeleteRewrite_MissingAnswerParam(t *testing.T) {
-	srv := newTestServer(t, &mockAdguard{})
+func TestDeleteRewrite_DomainNotFound(t *testing.T) {
+	srv := newTestServer(t, &mockAdguard{
+		listRewritesFunc: func() ([]adguard.Rewrite, error) { return []adguard.Rewrite{}, nil },
+	})
+	defer srv.Close()
+	req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/rewrites/missing.example.com", nil)
+	req.Header.Set("Authorization", authHeader())
+	resp, _ := http.DefaultClient.Do(req)
+	assertStatus(t, resp, http.StatusNotFound)
+	assertErrorCode(t, resp, "not_found")
+}
+
+func TestDeleteRewrite_ListUpstreamError(t *testing.T) {
+	srv := newTestServer(t, &mockAdguard{
+		listRewritesFunc: func() ([]adguard.Rewrite, error) {
+			return nil, errors.New("adguard unavailable")
+		},
+	})
 	defer srv.Close()
 	req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/rewrites/svc.example.com", nil)
 	req.Header.Set("Authorization", authHeader())
 	resp, _ := http.DefaultClient.Do(req)
-	assertStatus(t, resp, http.StatusBadRequest)
-	assertErrorCode(t, resp, "missing_param")
+	assertStatus(t, resp, http.StatusBadGateway)
+	assertErrorCode(t, resp, "upstream_error")
 }
 
 func TestDeleteRewrite_UpstreamError(t *testing.T) {
 	srv := newTestServer(t, &mockAdguard{
+		listRewritesFunc: func() ([]adguard.Rewrite, error) {
+			return []adguard.Rewrite{{Domain: "svc.example.com", Answer: "10.0.0.1"}}, nil
+		},
 		deleteRewriteFunc: func(domain, answer string) error {
 			return errors.New("adguard error")
 		},
 	})
 	defer srv.Close()
-	req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/rewrites/svc.example.com?answer=10.0.0.1", nil)
+	req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/rewrites/svc.example.com", nil)
 	req.Header.Set("Authorization", authHeader())
 	resp, _ := http.DefaultClient.Do(req)
+	assertStatus(t, resp, http.StatusBadGateway)
+	assertErrorCode(t, resp, "upstream_error")
+}
+
+// --- GET /rewrites/{domain} ---
+
+func TestGetRewrite_OK(t *testing.T) {
+	want := adguard.Rewrite{Domain: "svc.example.com", Answer: "10.0.0.5"}
+	srv := newTestServer(t, &mockAdguard{
+		listRewritesFunc: func() ([]adguard.Rewrite, error) {
+			return []adguard.Rewrite{
+				{Domain: "other.example.com", Answer: "10.0.0.1"},
+				want,
+			}, nil
+		},
+	})
+	defer srv.Close()
+
+	resp := getJSON(t, srv, "/rewrites/svc.example.com", true)
+	assertStatus(t, resp, http.StatusOK)
+
+	var got adguard.Rewrite
+	json.NewDecoder(resp.Body).Decode(&got)
+	if got.Domain != want.Domain || got.Answer != want.Answer {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestGetRewrite_NotFound(t *testing.T) {
+	srv := newTestServer(t, &mockAdguard{
+		listRewritesFunc: func() ([]adguard.Rewrite, error) { return []adguard.Rewrite{}, nil },
+	})
+	defer srv.Close()
+	resp := getJSON(t, srv, "/rewrites/missing.example.com", true)
+	assertStatus(t, resp, http.StatusNotFound)
+	assertErrorCode(t, resp, "not_found")
+}
+
+func TestGetRewrite_UpstreamError(t *testing.T) {
+	srv := newTestServer(t, &mockAdguard{
+		listRewritesFunc: func() ([]adguard.Rewrite, error) {
+			return nil, errors.New("adguard unavailable")
+		},
+	})
+	defer srv.Close()
+	resp := getJSON(t, srv, "/rewrites/svc.example.com", true)
 	assertStatus(t, resp, http.StatusBadGateway)
 	assertErrorCode(t, resp, "upstream_error")
 }

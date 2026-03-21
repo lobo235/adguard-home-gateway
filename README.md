@@ -73,22 +73,30 @@ Add a new DNS rewrite.
 
 Returns `201` on success.
 
+### GET /rewrites/{domain}
+
+Returns the rewrite entry for a specific domain. Returns `404` if no rewrite exists for that domain.
+
+```json
+{"domain": "svc.example.com", "answer": "192.168.1.10"}
+```
+
 ### PUT /rewrites/{domain}
 
-Update the answer for an existing rewrite. Looks up the current entry by domain, deletes it, and re-adds it with the new answer. Returns `404` if the domain has no rewrite.
+Upsert the answer for a domain. If a rewrite exists, it is replaced. If no rewrite exists, one is created. Idempotent — safe to call without checking whether the entry already exists.
 
 ```json
 {"answer": "192.168.1.20"}
 ```
 
-Returns `200` with the updated entry on success.
+Returns `200` with the current entry on success.
 
 ### DELETE /rewrites/{domain}
 
-Delete a specific rewrite entry. The `?answer=` query parameter is required because AdGuard Home identifies entries by the domain+answer pair.
+Delete a specific rewrite entry. Looks up the current answer by domain automatically. Returns `404` if no rewrite exists for that domain.
 
 ```
-DELETE /rewrites/svc.example.com?answer=192.168.1.10
+DELETE /rewrites/svc.example.com
 ```
 
 Returns `204` on success.

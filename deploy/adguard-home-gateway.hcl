@@ -59,6 +59,7 @@ job "adguard-home-gateway" {
 
       template {
         data = <<EOF
+ADGUARD_USER={{ with secret "secret/data/adguard-home-gateway" }}{{ .Data.data.adguard_user }}{{ end }}
 ADGUARD_PASSWORD={{ with secret "secret/data/adguard-home-gateway" }}{{ .Data.data.adguard_password }}{{ end }}
 GATEWAY_API_KEY={{ with secret "secret/data/adguard-home-gateway" }}{{ .Data.data.api_key }}{{ end }}
 EOF
@@ -69,7 +70,6 @@ EOF
       env {
         ADGUARD_SERVERS         = "adguard1.example.com,adguard2.example.com"
         ADGUARD_SCHEME          = "http"
-        ADGUARD_USER            = "admin"
         ADGUARD_TLS_SKIP_VERIFY = "false"
         PORT                    = "8080"
         LOG_LEVEL               = "info"
