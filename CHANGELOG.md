@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.1.0] - 2026-03-21
+
 ### Added
 - `GET /rewrites/{domain}` — single-domain lookup endpoint; returns the rewrite for that domain or 404
 - `PUT /rewrites/{domain}` upsert — now creates the entry if it does not exist instead of returning 404; makes the endpoint idempotent for "ensure this DNS entry exists" workflows
+- `.golangci.yml` — strict linter config (errcheck, govet, staticcheck, unused, gocyclo, misspell, revive, goimports)
+- `.githooks/pre-commit` — runs lint and tests before every commit; activate with `make hooks`
+- `make hooks` Makefile target
 
 ### Changed
 - `DELETE /rewrites/{domain}` — no longer requires `?answer=` query parameter; looks up the existing answer automatically by domain, returns 404 if the domain has no rewrite
