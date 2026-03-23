@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct Vault secret path in deploy spec to use `kv/data/nomad/default/adguard-home-gateway`
 - Change `vault.change_mode` from `noop` to `restart` in deploy spec
 
+### Changed
+- Docker build workflow resolves version from git tags for non-tag builds
+
 ## [v1.1.0] - 2026-03-21
 
 ### Added
