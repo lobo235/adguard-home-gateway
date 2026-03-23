@@ -46,7 +46,7 @@ job "adguard-home-gateway" {
 
     vault {
       cluster     = "default"
-      change_mode = "noop"
+      change_mode = "restart"
     }
 
     task "adguard-home-gateway" {
@@ -59,9 +59,9 @@ job "adguard-home-gateway" {
 
       template {
         data = <<EOF
-ADGUARD_USER={{ with secret "secret/data/adguard-home-gateway" }}{{ .Data.data.adguard_user }}{{ end }}
-ADGUARD_PASSWORD={{ with secret "secret/data/adguard-home-gateway" }}{{ .Data.data.adguard_password }}{{ end }}
-GATEWAY_API_KEY={{ with secret "secret/data/adguard-home-gateway" }}{{ .Data.data.api_key }}{{ end }}
+ADGUARD_USER={{ with secret "kv/data/nomad/default/adguard-home-gateway" }}{{ .Data.data.adguard_user }}{{ end }}
+ADGUARD_PASSWORD={{ with secret "kv/data/nomad/default/adguard-home-gateway" }}{{ .Data.data.adguard_password }}{{ end }}
+GATEWAY_API_KEY={{ with secret "kv/data/nomad/default/adguard-home-gateway" }}{{ .Data.data.api_key }}{{ end }}
 EOF
         destination = "secrets/adguard-home-gateway.env"
         env         = true
