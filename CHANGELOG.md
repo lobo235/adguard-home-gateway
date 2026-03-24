@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.1.1] - 2026-03-24
+
 ### Fixed
 - Correct Vault secret path in deploy spec to use `kv/data/nomad/default/adguard-home-gateway`
 - Change `vault.change_mode` from `noop` to `restart` in deploy spec
