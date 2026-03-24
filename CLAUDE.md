@@ -48,20 +48,25 @@ go build -ldflags "-X main.version=v1.0.0" -o adguard-home-gateway ./cmd/server
 | GET    | /health                 | no     | Ping AdGuard, return version       |
 | GET    | /rewrites               | Bearer | List all DNS rewrites              |
 | POST   | /rewrites               | Bearer | Add a DNS rewrite                  |
-| PUT    | /rewrites/{domain}      | Bearer | Update rewrite (lookup + replace)  |
-| DELETE | /rewrites/{domain}      | Bearer | Delete rewrite (requires ?answer=) |
+| GET    | /rewrites/{domain}      | Bearer | Get rewrite for a domain (404 if none) |
+| PUT    | /rewrites/{domain}      | Bearer | Upsert rewrite (create or replace) |
+| DELETE | /rewrites/{domain}      | Bearer | Delete rewrite by domain (404 if none) |
+
+### GET /rewrites/{domain}
+
+Returns the rewrite entry for a specific domain. Returns 404 if no rewrite exists.
 
 ### PUT /rewrites/{domain}
 
-Looks up the existing rewrite for the domain (assumes one rewrite per domain),
-deletes it, then adds a new one. Returns 404 if the domain has no rewrite.
+Upsert — creates the entry if it does not exist, replaces it if it does.
+Idempotent for "ensure this DNS entry exists" workflows.
 
 Request body: `{"answer": "new-value"}`
 
 ### DELETE /rewrites/{domain}
 
-Requires `?answer=<current-answer>` because AdGuard identifies rewrites by the
-domain+answer pair.
+Looks up the existing answer by domain automatically. Returns 404 if the domain
+has no rewrite. No `?answer=` parameter required.
 
 ## Architecture
 

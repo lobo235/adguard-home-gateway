@@ -47,7 +47,7 @@ All routes except `GET /health` require `Authorization: Bearer <GATEWAY_API_KEY>
 Returns the service status and current version. Unauthenticated.
 
 ```json
-{"status": "ok", "version": "v1.0.0"}
+{"status": "ok", "version": "v1.1.0"}
 ```
 
 Returns `503` if AdGuard Home is unreachable.
@@ -75,7 +75,7 @@ Returns `201` on success.
 
 ### GET /rewrites/{domain}
 
-Returns the rewrite entry for a specific domain. Returns `404` if no rewrite exists for that domain.
+Returns the rewrite entry for a specific domain. Returns `404` if no rewrite exists.
 
 ```json
 {"domain": "svc.example.com", "answer": "192.168.1.10"}
@@ -83,7 +83,7 @@ Returns the rewrite entry for a specific domain. Returns `404` if no rewrite exi
 
 ### PUT /rewrites/{domain}
 
-Upsert the answer for a domain. If a rewrite exists, it is replaced. If no rewrite exists, one is created. Idempotent — safe to call without checking whether the entry already exists.
+Upsert the answer for a domain. If a rewrite exists, it is replaced. If no rewrite exists, one is created. Idempotent.
 
 ```json
 {"answer": "192.168.1.20"}
@@ -93,7 +93,7 @@ Returns `200` with the current entry on success.
 
 ### DELETE /rewrites/{domain}
 
-Delete a specific rewrite entry. Looks up the current answer by domain automatically. Returns `404` if no rewrite exists for that domain.
+Looks up the current answer by domain automatically. Returns `404` if no rewrite exists.
 
 ```
 DELETE /rewrites/svc.example.com
@@ -104,7 +104,7 @@ Returns `204` on success.
 ## Building
 
 ```bash
-go build -ldflags "-X main.version=v1.0.0" -o adguard-home-gateway ./cmd/server
+go build -ldflags "-X main.version=v1.1.0" -o adguard-home-gateway ./cmd/server
 ```
 
 ## Testing
@@ -116,7 +116,7 @@ go test ./...
 ## Docker
 
 ```bash
-docker build --build-arg VERSION=v1.0.0 -t adguard-home-gateway .
+docker build --build-arg VERSION=v1.1.0 -t adguard-home-gateway .
 ```
 
 Images are published to `ghcr.io/lobo235/adguard-home-gateway` on push to `main` and on `v*` tags.
